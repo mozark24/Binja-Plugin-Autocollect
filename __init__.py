@@ -13,7 +13,7 @@ s.FuncType('0x401021','uint32_t')
 s.SetColor(0x40101b,'CyanHighlightColor')
 s.Jump('0x40101b', 'Graph:PE')
 s.SetFunc('0x401477', 'NewFunc')
-s.MakeComm('0x40101b','Test Comment')
+s.MakeComm('0x401019', "Important call here!", '0x401000')
 s.Undo()
 s.Redo()
 s.version()
@@ -252,7 +252,7 @@ class Bookmark:
 		func = self.view.get_function_at(int(func_address,16))
 		_var_type = self.var_lookup(var_type)
 		# print(_var_type)
-
+		self.Jump(func_address,'Graph:PE')			# Do I want to jump to that location?
 		return func.create_user_var(func.vars[int(index)], _var_type, var_name)
 
 	@expose
@@ -262,7 +262,7 @@ class Bookmark:
 		s.FuncName('0x40102c', "new")
 		"""
 		autocollect.eventfunc2 = time.time()
-		# self.Jump(address,'Graph:PE')
+		self.Jump(address,'Graph:PE')
 		func = self.view.get_function_at(int(address,16)) 	#Only works for main function, not called
 		func.name = funcName
 
@@ -270,8 +270,9 @@ class Bookmark:
 	def FuncNameType(self, address, funcName, var_type):
 		""" SetFunc(int address, string funcName) => None
 		Set Function name address to string
-s.FuncName('0x40102c', "new")
-s.FuncType('0x40102c','uint32_t')		
+import xmlrpclib
+s = xmlrpclib.ServerProxy('http://localhost:1337')
+s.FuncNameType('0x40102c', "new",'uint32_t')		
 		"""
 		autocollect.eventfunc2 = time.time()
 		# self.Jump(address,'Graph:PE')
