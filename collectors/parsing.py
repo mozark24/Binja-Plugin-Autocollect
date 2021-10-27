@@ -35,23 +35,23 @@ def serialize(obj):
 
     return obj.__dict__
 
+
 def printJSONFile(data):
 
-    fullpath = "C:\\Users\\mozar\\Documents\\Work\\PhD\\JavaScript\\Binja-NodeJS\\jsondata.json"
-
     json_dump = json.dumps(data, sort_keys=True)
+    fullpath = os.path.join(tempfile.gettempdir(), 'jsondata.json')
 
     try:
-        # fullpath = os.path.join(tempfile.gettempdir(), 'jsondata.json')
-        
-        jf = open(fullpath, "a+")
-        # jf.seek(0)
-        # jf.truncate()
-        jf.write(json_dump + "\n")
-        jf.close()
+        with open(fullpath, "a+") as jf:
+            # jf.seek(0)
+            # jf.truncate()
+            jf.write(json_dump + "\n")
+            jf.close()
+            print(f"written to {fullpath}")
     except IOError:
         print("ERROR: Unable to open/write to {}".format(fullpath))
     return 
+
 
 class OrderedSet(collections.Set):
     def __init__(self, iterable=()):
@@ -63,14 +63,21 @@ class OrderedSet(collections.Set):
     def __iter__(self):
         return iter(self.d)
 
+
 def type_lookup(var_type):
-	# arch = self.view.arch
-	# arch_var = eval("self.view.arch")
-    type_list = ['int16_t', 'int24_t', 'int32_t', 'char', 'void', 'uint16_t','uint24_t','uint32_t',
-				'float8','float16','float24','float', 'double','float72','long double',
-				'void*','void* const','void* volatile','void&','int32_t*']
+    # arch = self.view.arch
+    # arch_var = eval("self.view.arch")
+    type_list = [
+        'int16_t', 'int24_t', 'int32_t',
+        'char', 'void', 'uint16_t',
+        'uint24_t', 'uint32_t',
+        'float8', 'float16', 'float24', 'float',
+        'double', 'float72', 'long double',
+        'void*', 'void* const',
+        'void* volatile', 'void&', 'int32_t*'
+    ]
     
-    if (type_list.count(var_type) > 0):
+    if type_list.count(var_type) > 0:
         print("found var: {}".format(var_type))
         return True
     else:
@@ -148,11 +155,14 @@ def update_ns(bip, bv):
     # printJSONFile(data)
     return
 
+
 # create dictionary of address, type, name for binary
 def func_types(bv):
     s = []
     tup_master = ()
+    print("function", bv.functions)
     for func in bv.functions:
+        print(func.__dict__)
         tup_temp = (str(func)[11:-1], str(func.return_type))
         s.append(tup_temp)
         tup_temp2 = (str(func)[11:-1], str(func.name))
@@ -163,27 +173,37 @@ def func_types(bv):
         d[k].append(v)
     # list(d.items()) = [('_start', ['uint32_t', '0x401000']), ....
     return d
-    
+
+
 def diff_func_types(a, b):
     # Change function type 
     diff_change = 0
     set_diff = None
-    print("in diff_func_types "+ a, b)
+    # print("in diff_func_types ", a, b)
     for i in a:
         diff = set(a[i]) - set(b[i])    
         if (len(diff) > 0):
             diff_change = diff
             set_diff = set(a[i])
-    print("diff_func_types" +  diff_change, set_diff)
+    print("diff_func_types", diff_change, set_diff)
     return diff_change, set_diff
 
     # Changed func name
     # diff_keys = a.keys() - b.keys()     # {1, '_startIO'}
     # func_renamed = list(diff_keys)[1]   # '_startIO'
 
+
 def start_watch(bv):
 
-    obj = [o for o in gc.get_objects() if isinstance(o, scriptingprovider.PythonScriptingInstance.InterpreterThread)]
+    obj = [
+        o for o in
+        gc.get_objects()
+        if isinstance(
+            o,
+            scriptingprovider.PythonScriptingInstance.InterpreterThread
+        )
+    ]
+
     if len(obj) == 1:
         bip = obj[0]
     else:
@@ -192,6 +212,7 @@ def start_watch(bv):
     setValue(bip, bv)
     # update_ns(bip, bv)
     threading.Timer(1, start_watch, [bv]).start()
+
 
 def func_updated(bv, function):
     global eventfunc2, var_state, current_addr, func_name, comment_state, highlight_state, dict_funcs
@@ -203,19 +224,23 @@ def func_updated(bv, function):
     # eventfunc2 = time.time()
 
     try:
+            func_addr_start = hex(int(bv.get_functions_containing(current_addr)[0].start))
             # if (eventfunc + 1 < time.time()):
-            print("{} {}".format(hex(int(bv.get_functions_containing(current_addr)[0].start)), str(function)))
+            print("{} {}".format(
+                func_addr_start,
+                str(function)
+            ))
             #print("function {}".format(hex(int(function.start))))
             # print("{}".format(eventfunc2))
             # if (bv.file.view == "Graph:PE" or bv.file.view == "Linear:PE"):
-            if (eventfunc2 + 1 < time.time()):
-                #Check for var name collision (caused spurious var entries)
-                if (str(bv.get_functions_containing(current_addr)) != str(function)):
+            if eventfunc2 + 1 < time.time():
+                # Check for var name collision (caused spurious var entries)
+                if str(bv.get_functions_containing(current_addr)) != str(function):
                     var_state = function.vars
                 # print('[*] Updated function {name}'.format(name=function.symbol.name))
 
                 # Local Var name/type change
-                for item,var in enumerate(var_state):
+                for item, var in enumerate(var_state):
                     if (str(var_state[item].name) != str(function.vars[item].name)) and temp_name == 0:
                         print("[] Name change: {} {}".format(function.vars[item].name, item))
                         var_type_new, var_name_new, index = function.vars[item].type, function.vars[item].name, item
@@ -228,9 +253,18 @@ def func_updated(bv, function):
                         temp_type = 1
 
                 # Local Var name/type change
-                if (temp_name == 1 and temp_type == 1):
-                    print("[*] Var_Updated: func:{} func_addr:{} var_name_new:{} var_type_new:{} var_name_old:{} var_type_old:{}"
-                            .format(function.symbol.name, str(function)[11:-1], var_name_new, var_type_new, var_name_old, var_type_old))
+                if temp_name == 1 and temp_type == 1:
+                    print("[*] Var_Updated: "
+                          "func:{} func_addr:{} "
+                          "var_name_new:{} var_type_new:{} "
+                          "var_name_old:{} var_type_old:{}".format(
+                        function.symbol.name,
+                        str(function)[11:-1],
+                        var_name_new,
+                        var_type_new,
+                        var_name_old,
+                        var_type_old
+                    ))
                     data = {
                         'type': 'var_updated',
                         'function': str(function.symbol.name),
@@ -275,9 +309,15 @@ def func_updated(bv, function):
                 # Function name/type change 
                 # Rememeber what the func name/type were first (dict_funcs), then send new and old
                 dict_funcs_new = func_types(bv)
+                if not dict_funcs:
+                    dict_funcs = dict_funcs_new
+                print("+"*20)
+                for key, value in dict_funcs_new.items():
+                    print(value)
+                print("+"*20)
                 new_key_diff, new_set_diff = diff_func_types(dict_funcs_new, dict_funcs)
-                print("new_key_diff,  {} {}".format(new_key_diff))
-                if (new_key_diff > 0):
+                print("new_key_diff,  {} {}".format(new_key_diff, new_set_diff))
+                if new_key_diff:
                 # if(func_name == function.symbol.name):
                 #     print("Func Name Same") 
                 # if (func_name != function.symbol.name):
@@ -287,83 +327,86 @@ def func_updated(bv, function):
                     # new_key_change, new_key_diff = diff_func_types(dict_funcs_new, dict_funcs)
                     
                     print('[*] Updating function name {}'.format(function))
-                    print("func_new: {} {} {}".format(new_key_change, new_key_diff, new_set_diff))
-                    old_key_change, old_key_diff, old_set_diff = diff_func_types(dict_funcs, dict_funcs_new)
-                    print("func_old: {} {} {}".format(old_key_change, old_key_diff, old_set_diff))
+                    print("func_new: {} {}".format(new_key_diff, new_set_diff))
+                    old_key_diff, old_set_diff = diff_func_types(dict_funcs, dict_funcs_new)
+                    print("func_old: {} {}".format(old_key_diff, old_set_diff))
 
-                    if (old_key_change != 0 and new_key_change != 0):
-                        # eventfunc2 = time.time()  #skip next updates (call updates in other functions)
-                        # Name change
-                        print("keydiff: {} {}".format(old_key_diff, new_key_diff))
-                        if (str(old_key_diff) != str(new_key_diff)):
-                            print("**** Name updated****")
-                            # print(str(list(new_set_diff)))
-                            # The order of the old_set_diff list is swapped the first time... sometimes
-                            if (str(list(new_set_diff)[1]) == str(list(old_set_diff)[1])):
-                                data = {
-                                    'type': 'func_name_updated',
-                                    'func_addr': str(old_key_change),
-                                    'function_name_new': str(new_key_diff)[6:-3],
-                                    'function_name_old': str(old_key_diff)[6:-3],
-                                    'function_type_new': str(list(new_set_diff)[1]),
-                                    'function_type_old': str(list(old_set_diff)[1]),
-                                    'view': current_view
-                                }
-                            else:
-                                data = {
-                                    'type': 'func_name_updated',
-                                    'func_addr': str(old_key_change),
-                                    'function_name_new': str(new_key_diff)[6:-3],
-                                    'function_name_old': str(old_key_diff)[6:-3],
-                                    'function_type_new': str(list(new_set_diff)[1]),
-                                    'function_type_old': str(list(old_set_diff)[0]),
-                                    'view': current_view
-                                }
-                        # Name and Type change
-                        elif (len(list(new_key_diff)) > 1):
-                            print("**** Name and Type change ****")
-                            if (type_lookup(list(old_key_diff)[0])):
-                                # First element in old set is the type
-                                data = {
-                                    'type': 'func_name_type_updated',
-                                    'func_addr': str(old_key_change),
-                                    'function_name_new': str(list(new_set_diff)[0]),
-                                    'function_name_old': str(list(old_key_diff)[1]),
-                                    'function_type_new': str(list(new_set_diff)[1]),
-                                    'function_type_old': str(list(old_set_diff)[0]),
-                                    'view': current_view
-                                }
-                            else:
-                                # Second element in old set is the type
-                                data = {
-                                    'type': 'func_name_type_updated',
-                                    'func_addr': str(old_key_change),
-                                    'function_name_new': str(list(new_set_diff)[0]),
-                                    'function_name_old': str(list(old_key_diff)[0]),
-                                    'function_type_new': str(list(new_set_diff)[1]),
-                                    'function_type_old': str(list(old_set_diff)[1]),
-                                    'view': current_view
-                                }
 
-                        # Type change
-                        else: #if (str(list(old_set_diff)[1]) != str(list(new_set_diff)[1])):
-                            print("**** Type updated****")
+                    # eventfunc2 = time.time()  #skip next updates (call updates in other functions)
+                    # Name change
+                    print("keydiff: {} {}".format(old_key_diff, new_key_diff))
+                    if str(old_key_diff) != str(new_key_diff):
+                        print("**** Name updated ****")
+                        # print(str(list(new_set_diff)))
+                        # The order of the old_set_diff list is swapped the first time... sometimes
+                        if (str(list(new_set_diff)[1]) == str(list(old_set_diff)[1])):
                             data = {
-                                'type': 'func_type_updated',
-                                'func_addr': str(old_key_change),
-                                'function_name_new': str(list(new_set_diff)[0]),
-                                'function_name_old': str(list(old_set_diff)[0]),
+                                'type': 'func_name_updated',
+                                'func_addr': str(func_addr_start),
+                                'function_name_new': str(new_key_diff)[6:-3],
+                                'function_name_old': str(old_key_diff)[6:-3],
                                 'function_type_new': str(list(new_set_diff)[1]),
                                 'function_type_old': str(list(old_set_diff)[1]),
                                 'view': current_view
                             }
-                        dict_funcs = dict_funcs_new
-                        eventfunc2 = time.time()
-                        # func_name = function.symbol.name
-                        printJSONFile(data)
-                    
+                        else:
+                            data = {
+                                'type': 'func_name_updated',
+                                'func_addr': str(func_addr_start),
+                                'function_name_new': str(new_key_diff)[6:-3],
+                                'function_name_old': str(old_key_diff)[6:-3],
+                                'function_type_new': str(list(new_set_diff)[1]),
+                                'function_type_old': str(list(old_set_diff)[0]),
+                                'view': current_view
+                            }
+                    # Name and Type change
+                    elif (len(list(new_key_diff)) > 1):
+                        print("**** Name and Type change ****")
+                        if (type_lookup(list(old_key_diff)[0])):
+                            # First element in old set is the type
+                            data = {
+                                'type': 'func_name_type_updated',
+                                'func_addr': str(func_addr_start),
+                                'function_name_new': str(list(new_set_diff)[0]),
+                                'function_name_old': str(list(old_key_diff)[1]),
+                                'function_type_new': str(list(new_set_diff)[1]),
+                                'function_type_old': str(list(old_set_diff)[0]),
+                                'view': current_view
+                            }
+                        else:
+                            # Second element in old set is the type
+                            data = {
+                                'type': 'func_name_type_updated',
+                                'func_addr': str(func_addr_start),
+                                'function_name_new': str(list(new_set_diff)[0]),
+                                'function_name_old': str(list(old_key_diff)[0]),
+                                'function_type_new': str(list(new_set_diff)[1]),
+                                'function_type_old': str(list(old_set_diff)[1]),
+                                'view': current_view
+                            }
+
+                    # Type change
+                    else: #if (str(list(old_set_diff)[1]) != str(list(new_set_diff)[1])):
+                        print("**** Type updated****")
+                        data = {
+                            'type': 'func_type_updated',
+                            'func_addr': str(func_addr_start),
+                            'function_name_new': str(list(new_set_diff)[0]),
+                            'function_name_old': str(list(old_set_diff)[0]),
+                            'function_type_new': str(list(new_set_diff)[1]),
+                            'function_type_old': str(list(old_set_diff)[1]),
+                            'view': current_view
+                        }
+                    dict_funcs = dict_funcs_new
+                    eventfunc2 = time.time()
+                    # func_name = function.symbol.name
+                    printJSONFile(data)
+
 
                 #Comment state change
+                if comment_state is None:
+                    comment_state = function.comments
+                print("type of function comments ", type(function.comments))
                 if ((comment_state != function.comments)):
                     address, comment, comment_text = None, None, None
                     comment_state_len = len(comment_state)
@@ -379,7 +422,7 @@ def func_updated(bv, function):
                                 comment = item[1]
                                 comment_text = "comment_changed"
                                 print("[*] Comment changed: {}".format(comment))
-                    
+
                         #check for __stdcall
                         string_start = 8
                         if (str(function)[9] == "_"):
@@ -394,7 +437,7 @@ def func_updated(bv, function):
                                 'comments_old': "",
                                 'view': current_view
                             }
-                        else: 
+                        else:
                             data = {
                                 'type': comment_text,
                                 'func': hex(int(function.start)),
@@ -403,7 +446,7 @@ def func_updated(bv, function):
                                 'comments_old': comment_state.values().pop(0),
                                 'view': current_view
                             }
-                    
+
                     # Removed comment
                     elif (comment_state_len > new_comment_len):
                         for item in comment_state.items():
@@ -424,12 +467,15 @@ def func_updated(bv, function):
                     printJSONFile(data)
 
                 # Highlight change:
-                if (str(highlight_state) != str(function.get_instr_highlight(current_addr))):
+                if str(highlight_state) != str(function.get_instr_highlight(current_addr)):
                     print("[*] Highlight change: {} {}".format(hex(int(current_addr)), function.get_instr_highlight(current_addr)))
                     print("highlight_state: {}".format(highlight_state))
                     print("get_instr_highlight: {}".format(function.get_instr_highlight(current_addr)))
                     
-                    color_old, color_new = color_matching(str(highlight_state), str(function.get_instr_highlight(current_addr)))
+                    color_old, color_new = color_matching(
+                        str(highlight_state),
+                        str(function.get_instr_highlight(current_addr))
+                    )
                     
                     data = {
                         'type': "highlight",
@@ -448,21 +494,33 @@ def func_updated(bv, function):
     #     print("Skipping func_updated2")
     except Exception as e:
         print("Exception: skipping func_update: {}".format(e))
+        raise
 
-def color_matching(color_old, color_new):
-    colors_dict = {'none':'NoHighlightColor', 'black':'BlackHighlightColor', 'blue':'BlueHighlightColor', 
-                    'cyan':'CyanHighlightColor', 'green': 'GreenHighlightColor', 'magenta': 'MagentaHighlightColor',
-                    'orange': 'OrangeHighlightColor', 'red': 'RedHighlightColor', 'white': 'WhiteHighlightColor',
-                    'yellow': 'YellowHighlightColor'}
 
-    _old_color=color_old.split(':')[1].split()[0][:-1]
-    _new_color=color_new.split(':')[1].split()[0][:-1]
+def color_matching(color_old: str, color_new: str):
+    colors_dict = {
+        'None': 'NoHighlightColor',
+        'none': 'NoHighlightColor',
+        'black': 'BlackHighlightColor',
+        'blue': 'BlueHighlightColor',
+        'cyan': 'CyanHighlightColor',
+        'green': 'GreenHighlightColor',
+        'magenta': 'MagentaHighlightColor',
+        'white': 'WhiteHighlightColor',
+        'yellow': 'YellowHighlightColor'
+    }
 
-    print(_old_color, _new_color)
-    old_color = colors_dict.get(_old_color, color_old)
+    if color_old != "None":
+        _old_color = color_old.split(':')[1].split()[0][:-1]
+        old_color = colors_dict.get(_old_color, color_old)
+    else:
+        old_color = colors_dict.get(color_old)
+
+    _new_color = color_new.split(':')[1].split()[0][:-1]
     new_color = colors_dict.get(_new_color, color_new)
 
     return old_color, new_color
+
 
 def func_added(bv, function):
     global eventfunc2
@@ -479,6 +537,7 @@ def func_added(bv, function):
         eventfunc2 = time.time()
         printJSONFile(data)
 
+
 def func_removed(bv, function):
     global eventfunc2
 
@@ -493,6 +552,7 @@ def func_removed(bv, function):
         }
         eventfunc2 = time.time()
         printJSONFile(data)
+
 
 def data_written(bv, address, length):
     global eventfunc2, data_state#, eventfunc
