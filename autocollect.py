@@ -36,8 +36,8 @@ def serialize(obj):
     return obj.__dict__
 
 def printJSONFile(data):
-
-    fullpath = "C:\\Users\\mozar\\Documents\\Work\\PhD\\JavaScript\\Binja-NodeJS\\jsondata.json"
+    # UPDATE FOR YOUR DIRECTORY
+    fullpath = "C:\\Users\\JavaScript\\Binja-NodeJS\\jsondata.json"
 
     json_dump = json.dumps(data, sort_keys=True)
 
